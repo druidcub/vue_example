@@ -1,0 +1,237 @@
+<script src="https://unpkg.com/vue@next"></script>
+
+
+
+<div id="container">
+    <!--產出對應的文字框-->
+    <p
+        v-for="(item,key,index) in labels" 
+        :id="key"
+        :style="{
+            left: item.x+'px',
+            top: item.y+'px'
+        }">
+        {{item.value}}
+    </p>
+    <object data="http://10.12.1.221:1880/img/lamp.svg" v-for="(item,key,index) in lamps" 
+        :style="{
+            left: item.x+'px',
+            top: item.y+'px'
+        }"
+        :class="[item.value?item.color:'gray']"></object>
+</div>
+
+<script>
+    var theApp = Vue.createApp({
+        data() {
+            return {
+                lamps:{
+                    //SMT14
+                    lm_HR_0601_1:{x:     315,   y:      720,    value:  false,      color: "green"},
+                    lm_HR_0601_0:{x:     375,   y:      720,    value:  false,      color: "yellow"},
+                    lm_HR_0601_2:{x:     435,   y:      720,    value:  false,      color: "red"},
+                    //SMT15
+                    lm_HR_0602_1:{x:     315,   y:      936,    value:  false,      color: "green"},
+                    lm_HR_0602_0:{x:     375,   y:      936,    value:  false,      color: "yellow"},
+                    lm_HR_0602_2:{x:     435,   y:      936,    value:  false,      color: "red"},
+                    //SMT16
+                    lm_HR_0609_1:{x:    1315,   y:      936,    value:  false,      color: "green"},
+                    lm_HR_0609_0:{x:    1375,   y:      936,    value:  false,      color: "yellow"},
+                    lm_HR_0609_2:{x:    1435,   y:      936,    value:  false,      color: "red"},
+                },
+                labels:{
+                    //SMT1
+                    lb_HR_0001: {x:     1600,    y:      546,    value:  "001"},
+                    lb_HR_0003: {x:     1600,    y:      586,    value:  "003"},
+                    lb_HR_0005: {x:     1775,    y:      546,    value:  "005"},
+                    lb_HR_0006: {x:     1775,    y:      586,    value:  "006"},
+                    //SMT2
+                    lb_HR_0063: {x:      365,    y:      486,    value:  "063"},
+                    lb_HR_0065: {x:      365,    y:      526,    value:  "065"},
+                    //SMT3
+                    lb_HR_0168: {x:      365,    y:      626,    value:  "168"},
+                    //SMT4
+                    lb_HR_0091: {x:      835,    y:      226,    value:  "091"},
+                    lb_HR_0093: {x:      835,    y:      266,    value:  "093"},
+                    //SMT5
+                    lb_HR_0111: {x:     1605,    y:      932,    value:  "111"},
+                    lb_HR_0113: {x:     1605,    y:      971,    value:  "113"},
+                    //SMT6
+                    lb_HR_0141: {x:      365,    y:      386,    value:  "141"},
+                    //SMT7
+                    lb_HR_0142: {x:      595,    y:      226,    value:  "142"},
+                    //SMT8
+                    lb_HR_0144: {x:     1137,    y:      932,    value:  "144"},
+                    lb_HR_0145: {x:     1129,    y:      974,    value:  "145"},
+                    //SMT9
+                    lb_HR_0147: {x:      905,    y:      930,    value:  "147"},
+                    lb_HR_0148: {x:      905,    y:      971,    value:  "148"},
+                    //SMT10
+                    lb_HR_0152: {x:     1600,    y:      708,    value:  "152"},
+                    lb_HR_0150: {x:     1600,    y:      748,    value:  "150"},
+                    //SMT11
+                    lb_HR_0156: {x:     1075,    y:      227,    value:  "156"},
+                    lb_HR_0158: {x:     1075,    y:      267,    value:  "158"},
+                    //SMT12
+                    lb_HR_0160: {x:     1330,    y:      227,    value:  "160"},
+                    lb_HR_0162: {x:     1330,    y:      267,    value:  "162"},
+                    //SMT15
+                    lb_HR_0603: {x:      615,    y:      931,    value:  "603"},
+                    lb_HR_0607: {x:      388,    y:      973,    value:  "607"},
+                    lb_HR_0605: {x:      615,    y:      973,    value:  "605"},
+                    //SMT16
+                    lb_HR_0610: {x:     1409,    y:      973,    value:  "610"},
+                }
+            }
+        }
+    });
+    var vm = theApp.mount("#container");
+
+    //處理HR (綁定到Label上)
+    function processHR(HR_obj)
+    {
+        for (const [lbName, obj] of Object.entries(vm.labels)) {
+            var name = lbName.slice(3);
+            if(HR_obj[name] !== undefined)
+            {
+                obj.value = HR_obj[name].toFixed(1);
+            }
+        }
+
+        for (const [lbName, obj] of Object.entries(vm.lamps)) {
+            var name = lbName.slice(3, -2);
+            var idx = lbName.slice(-1);
+            if(HR_obj[name] !== undefined)
+            {
+                obj.value = HR_obj[name] & (0x01 << idx);
+            }
+        }
+    }
+
+    var Socket = '';
+    var setIntervalWesocketPush = null;
+    var _url = '';
+    function createSocket(url = _url) {
+        _url = url;
+        Socket && Socket.close();
+        if (!Socket) {
+            console.log('建立websocket连接')
+            Socket = new WebSocket(url);
+            Socket.onopen = onOpenWS;
+            Socket.onmessage = onMessageWS;
+            Socket.onerror = onErrorWS;
+            Socket.onclose = onCloseWS;
+        } else {
+            console.log('websocket已连接')
+        }
+    }
+    //開啟ws做的事(預設會5秒送ping)
+    function onOpenWS(){
+        //sendPing();
+    }
+    //5秒送ping
+    function sendPing(time = 5000, ping = 'ping'){
+        clearInterval(setIntervalWesocketPush);
+        Socket.send(ping);
+        setIntervalWesocketPush = setInterval(() => {
+            Socket.send(ping);
+        }, time);
+    }
+    //WS連線失敗時的處理
+    function onErrorWS(){
+        Socket.close();
+        clearInterval(setIntervalWesocketPush);
+        console.log('連接失敗，重連中')
+        if (Socket.readyState !== 3) {
+            Socket = null
+            createSocket();
+        }
+    }
+    //ws收到訊息時的處理
+    function onMessageWS(e){
+        //console.log(e.data);
+        var obj = JSON.parse(e.data);
+        if(obj.HR_0001 !== undefined)
+        {
+            processHR(obj);
+        }
+    }
+    //發送數據但連結未建立(每秒一次重連)
+    function connecting(message) {
+        setTimeout(() => {
+            if (Socket.readyState === 0) {
+                connecting(message);
+            } else {
+                Socket.send(JSON.stringify(message))
+            }
+        }, 1000);
+    }
+    //發送數據
+    function sendWSPush(message) {
+        if (Socket !== null && Socket.readyState === 3) {
+            Socket.close();
+            createSocket();
+        } else if (Socket.readyState === 1) {
+            Socket.send(JSON.stringify(message));
+        } else if (Socket.readyState === 0) {
+            connecting(message);
+        }
+    }
+    //斷線重連
+    const onCloseWS = () => {
+        clearInterval(setIntervalWesocketPush);
+        console.log('websocket已斷開....嘗試重連');
+        if (Socket.readyState !== 2) {
+            Socket = null;
+            createSocket();
+        }
+    }
+    
+    console.log("WS function ready");
+
+    console.log("開始處理ws");
+    createSocket("ws://10.12.1.221:1880/ws/data");
+</script>
+
+<style>
+    object {
+        position: absolute;
+        width: 15px;
+        height: 15px;
+    }
+    .red {
+        filter: invert(19%) sepia(40%) saturate(7253%) hue-rotate(357deg) brightness(94%) contrast(114%);
+    }
+    .green {
+        filter: invert(30%) sepia(24%) saturate(7100%) hue-rotate(83deg) brightness(115%) contrast(128%);
+    }
+    .yellow {
+        filter: invert(83%) sepia(83%) saturate(5704%) hue-rotate(359deg) brightness(108%) contrast(105%);
+    }
+    .gray {
+        filter: invert(30%) sepia(0%) saturate(480%) hue-rotate(242deg) brightness(84%) contrast(80%);
+    }
+    p {
+        position: absolute;
+        background-color: #151938;
+        color: white;
+        width: 45px;
+        height: 25px;
+        line-height: 25px;
+        text-align: center;
+        font-size: 18px;
+        margin:0px;
+        padding:0px;
+    }
+    body {
+        margin:0px;
+        padding:0px;
+    }
+    #container {
+        background:#121737 url('Facility_SMT.png') top left no-repeat;
+        margin:0;
+        padding:0;
+        width: 1920;
+        height: 1080;
+    }
+</style>

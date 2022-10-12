@@ -1,0 +1,229 @@
+<script src="https://unpkg.com/vue@next"></script>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<div id="app3">
+    <input v-model.lazy="publish.payload">
+    <br>
+    <button @click="createConnection();"
+            :disabled="client.connected">{{ client.connected ? 'Connected' : 'Connect' }}
+    </button>
+    <button v-if="client.connected" @click="destroyConnection">
+        Disconnect
+    </button>
+    <br>
+    <button @click="doSubscribe();" :disabled="subscribeSuccess">訂閱</button>
+    <button @click="doPublish();">發佈</button>
+    <br>
+    <p>Get String: {{receivedString}}</p>
+</div>
+<script type="module">
+    //import mqtt from 'mqtt'
+    Vue.createApp({
+        data() {
+            return {
+                connection: {
+                    host: 'localhost',//'broker.hivemq.com',
+                    port: 15675,//8000,
+                    endpoint: '/ws',
+                    clean: true, // 保留会话
+                    connectTimeout: 4000, // 超时时间
+                    reconnectPeriod: 4000, // 重连时间间隔
+                    // 认证信息
+                    clientId: 'mqttjs_3be2c321',
+                    //username: 'emqx_test',
+                    //password: 'emqx_test',
+                },
+                subscription: {
+                    topic: 'NexAIoT_220829/temp',
+                    qos: 0,
+                },
+                publish: {
+                    topic: 'NexAIoT_220829/temp',
+                    qos: 0,
+                    payload: '{ "msg": "Hello, I am browser." }',
+                },
+                receiveNews: '',
+                qosList: [
+                    { label: 0, value: 0 },
+                    { label: 1, value: 1 },
+                    { label: 2, value: 2 },
+                ],
+                client: {
+                    connected: false,
+                },
+                subscribeSuccess: false,
+                receivedString: "1234",
+            }
+        },
+        methods: {
+            // 创建连接
+            createConnection() {
+                // 连接字符串, 通过协议指定使用的连接方式
+                // ws 未加密 WebSocket 连接
+                // wss 加密 WebSocket 连接
+                // mqtt 未加密 TCP 连接
+                // mqtts 加密 TCP 连接
+                // wxs 微信小程序连接
+                // alis 支付宝小程序连接
+                const { host, port, endpoint, ...options } = this.connection
+                const connectUrl =  `ws://${host}:${port}${endpoint}`
+                try {
+                    console.log("-->" + connectUrl);
+                    this.client = mqtt.connect(connectUrl, options)
+                } catch (error) {
+                    console.log('mqtt.connect error', error)
+                }
+                this.client.on('connect', () => {
+                    console.log('Connection succeeded!')
+                    this.doSubscribe();
+                })
+                this.client.on('error', error => {
+                    console.log('Connection failed', error)
+                })
+                this.client.on('message', (topic, message) => {
+                    this.receiveNews = this.receiveNews.concat(message)
+                    console.log(`Received message ${message} from topic ${topic}`)
+                    this.receivedString = message;
+                })
+            },
+            // 订阅主题
+            doSubscribe() {
+                const { topic, qos } = this.subscription
+                this.client.subscribe(topic, qos, (error, res) => {
+                    if (error) {
+                    console.log('Subscribe to topics error', error)
+                    return
+                    }
+                    this.subscribeSuccess = true
+                    console.log('Subscribe to topics res', res)
+                    this.$forceUpdate();
+                })
+            },
+            // 取消订阅
+            doUnSubscribe() {
+                const { topic } = this.subscription
+                this.client.unsubscribe(topic, error => {
+                    if (error) {
+                    console.log('Unsubscribe error', error)
+                    }
+                })
+            },
+            // 发送消息
+            doPublish() {
+                const { topic, qos, payload } = this.publish
+                this.client.publish(topic, payload, qos, error => {
+                    if (error) {
+                    console.log('Publish error', error)
+                    }
+                })
+            },
+            // 断开连接
+            destroyConnection() {
+                if (this.client.connected) {
+                    try {
+                    this.client.end()
+                    this.client = {
+                        connected: false,
+                    }
+                    console.log('Successfully disconnected!')
+                    } catch (error) {
+                    console.log('Disconnect failed', error.toString())
+                    }
+                }
+            },
+        }
+        
+    }).mount("#app3");
+</script>
+
+
+<hr>
+<div id="app2">
+    <input type="number" v-model.lazy="in1">
+    <button v-bind:disabled="!in1_on">奇數時可點({{in1}})</button>
+    <br><br>
+    <span class="dot" v-bind:class="{'green': in1_on, 'red': !in1_on}"></span>
+    <p>Input: {{in1}}</p>
+    <p>Input * 2 = <span style="color: blue">{{in1*2}}</span></p>
+</div>
+<script>
+    Vue.createApp({
+        data(){
+            return {
+                in1: 10
+            }
+        },
+        computed: {
+            in1_on:{
+                get(){
+                    return ((this.in1%2)!==0);
+                }
+            }
+        }
+    }).mount("#app2");
+</script>
+
+
+<hr>
+<div id="app">
+    <p>1 台幣 = {{(1/jpy2twd).toFixed(3)}} 日幣 = {{(1/usd2twd).toFixed(3)}} 美金</p>
+    <div>台幣 <input type="text" v-model="twd"></div>
+    <div>日幣 <input type="text" v-model="jpy"> (匯率: <input type="text" class="rate" v-model="jpy2twd">)</div>
+    <div>美金 <input type="text" v-model="usd"> (匯率: <input type="text" class="rate" v-model="usd2twd">)</div>
+</div>
+<script>
+    var app = Vue.createApp({
+        data() {
+            return {
+                twd: 1,
+                jpy2twd: 0.278,
+                usd2twd: 28.3
+            }
+        },
+        computed:{
+            jpy:{
+                get(){
+                    return Number.parseFloat(Number(this.twd)/this.jpy2twd).toFixed(3);
+                },
+                set(val){
+                    this.twd = Number.parseFloat(Number(val)*this.jpy2twd).toFixed(3);
+                }
+            },
+            usd:{
+                get(){
+                    return Number.parseFloat(Number(this.twd)/this.usd2twd).toFixed(3);
+                },
+                set(val){
+                    this.twd = Number.parseFloat(Number(val)*this.usd2twd).toFixed(3);
+                }
+            }
+        }
+    })
+    app.mount("#app")
+</script>
+
+
+<style>
+    input {
+        text-align: center;
+    }
+    .rate {
+        width: 60px;
+    }
+    body {
+        background-color: lightyellow;
+    }
+    .dot {
+        height: 25px;
+        width: 25px;
+        background-color: #bbb;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .green {
+        background-color: green;
+    }
+    .red {
+        background-color: red;
+    }
+</style>
