@@ -13,7 +13,7 @@
         }">
         {{item.value}}
     </p>
-    <object data="http://10.12.1.221:1880/img/lamp.svg" v-for="(item,key,index) in lamps" 
+    <object data="http://localhost:1880/img/lamp.svg" v-for="(item,key,index) in lamps" 
         :style="{
             left: item.x+'px',
             top: item.y+'px'
@@ -190,7 +190,7 @@
     console.log("WS function ready");
 
     console.log("開始處理ws");
-    createSocket("ws://10.12.1.221:1880/ws/data");
+    createSocket("ws://localhost:1880/ws/data");
 </script>
 
 <style>

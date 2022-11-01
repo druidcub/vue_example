@@ -1,0 +1,78 @@
+<style>
+    .container {
+        overflow: hidden;
+        margin: 0px;
+    }
+    
+    .videobox iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+</style>
+
+<script type="application/javascript">
+    function resizeIFrame() {
+		console.log("resizeIFrame");
+        var iFrame = document.getElementById('frame');
+        var ratio_x = window.innerWidth/iFrame.contentWindow.document.body.scrollWidth;
+        var ratio_y = window.innerHeight/iFrame.contentWindow.document.body.scrollHeight;
+        iFrame.width  = iFrame.contentWindow.document.body.scrollWidth;
+        iFrame.height = iFrame.contentWindow.document.body.scrollHeight;
+        var tf, shift;
+        if(ratio_x < ratio_y)
+        {
+            shift = (window.innerHeight-iFrame.contentWindow.document.body.scrollHeight*ratio_x)/2;
+            tf = "translate(0px, " + shift + "px) scale(" + ratio_x + ")";
+        }
+        else
+        {
+            shift = (window.innerWidth/ratio_y-iFrame.contentWindow.document.body.scrollWidth)/2;
+            tf = "scale(" + ratio_y + ") translate(" + shift + "px, 0px) ";
+        }
+        //var ratio = Math.min(ratio_x, ratio_y);
+        
+        iFrame.style.transform = tf;
+        iFrame.style.transformOrigin="left top";
+    }
+    
+    //在resize完成後，處理resizeIFrame
+    var rtime;
+    var timeout = false;
+    var delta = 100;
+    window.addEventListener('resize', function(e) {
+        rtime = new Date();
+        if (timeout === false) {
+            timeout = true;
+            setTimeout(resizeend, delta);
+        }
+        
+    } );
+    function resizeend() {
+        if (new Date() - rtime < delta) 
+        {
+            setTimeout(resizeend, delta);
+        } 
+        else 
+        {
+            timeout = false;
+            resizeIFrame();
+        }   
+    }
+    
+    //在load完成之後，處理resizeIFrame
+    window.addEventListener('load', function(e) {
+        resizeIFrame();
+    } );
+
+</script>
+<body class="container">
+    <iframe class="frame"
+            id="frame" 
+            frameborder="0" 
+            src="facility_smt.html"
+            allowFullScreen="true">
+    </iframe>
+</body>
